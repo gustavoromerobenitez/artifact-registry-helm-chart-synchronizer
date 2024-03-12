@@ -2,8 +2,11 @@
 #
 # Helm Charts Sync
 #
-# List of Helm Charts to pull from their sources 
+# List of Helm Charts to pull from their sources
 #  and push to their destination in Artifact Regsitry
+#
+# IMPORTANT: Make sure the destination base repository exists,
+#   i.e: helm-public-charts
 #
 #############################################################
 - src: charts.jetstack.io/cert-manager/cert-manager

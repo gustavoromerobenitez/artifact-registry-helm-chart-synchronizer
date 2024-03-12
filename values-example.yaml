@@ -1,0 +1,37 @@
+# By default, all resources will be located in the same project
+projectId: &projectId test-project
+
+commonName: &commonName helm-chart-synchronizer
+
+# The project where the Cronjobs are deployed
+cronjobsProjectId: *projectId
+
+namespace: *commonName
+
+# The location of the Artifact Registry
+registry:
+  host: us-east1-docker.pkg.dev
+  projectId: *projectId
+
+image:
+  path: *commonName
+  tag: stable
+  digest: sha256:65a3abb4dce865134205ca2119cfa2746895aacd63defdfbf812df6d7c0abb28
+
+
+# The IAM Service Account
+# Must be created before deploying this application
+# Must have permissions:
+# - to read from Artifact Registry
+# - to administer any cluster that is to act upon
+iamServiceAccount:
+  name: *commonName
+  projectId: *projectId
+
+# The Kubernetes SA
+# Will be linked via Workload Identity to the IAM Service Account above
+kubernetesServiceAccount: *commonName
+
+debug: false
+
+schedule: "30 6 * * MON-FRI"
