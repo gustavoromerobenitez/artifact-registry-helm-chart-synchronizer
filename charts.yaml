@@ -1,0 +1,16 @@
+#############################################################
+#
+# Helm Charts Sync
+#
+# List of Helm Charts to pull from their sources 
+#  and push to their destination in Artifact Regsitry
+#
+#############################################################
+- src: charts.jetstack.io/cert-manager/cert-manager
+  dst: helm-public-charts/cert-manager
+  versions:
+  - v1.14.2
+- src: charts.jetstack.io/cert-manager/cert-manager-approver-policy
+  dst: helm-public-charts/cert-manager
+  versions:
+  - v0.12.1
