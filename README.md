@@ -29,7 +29,7 @@ Follow these steps to execute the script locally:
 ```
 # Configure the required environment variables
 export ARTIFACT_REGISTRY_PROJECT_ID=test-project
-export ARTIFACT_REGISTRY_HOSTNAME=us-east1-b.pkg.dev
+export ARTIFACT_REGISTRY_HOSTNAME=us-east1-docker.pkg.dev
 export DEBUG=false
 
 # Move into the application directory
