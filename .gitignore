@@ -163,3 +163,5 @@ virtualenv
 values.yaml
 *-venv
 *.tgz
+
+rendered/**

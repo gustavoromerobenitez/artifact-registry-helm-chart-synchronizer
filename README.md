@@ -16,7 +16,14 @@ The script reads environment variables to determine the location of the Artifact
 
 It then reads a YAML configuration file that must be passed as an argument, which details a series of Helm charts to be pulled, their source locations and destination repositories within Artifact Registry.
 
-The scripts accepts a second optional argument to define the level of parallelism. It is either the number of Helm charts in the file or 10, whichever is lowest.
+The script accepts a second optional argument to define the level of parallelism. It is either the number of Helm charts in the file or 10, whichever is lowest.
+
+## SAST Tools included
+
+### Trivy CLI
+
+### Checkov
+
 
 ### Testing Python Application locally
 
@@ -107,7 +114,7 @@ Example:
 
 ## Helm Chart
 
-The Helm Chart contained in this repository creates as many Kubernetes CronJobs as Node Pool scaling schedules are defined in the VALUES file.
+The Helm Chart contained in this repository creates a Kubernetes CronJob that runs the helm-chart-synchronizer on a schedule.
 
 ### Rendering the templates
 

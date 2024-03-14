@@ -28,11 +28,11 @@ TAG=$3
 # Build the image
 docker build -t ${REGISTRY}/${IMAGE_PATH}:${TAG} .
 
-# Retrieve the DIGEST and print it out
-DIGEST=$(docker image ls --digests --format json ${REGISTRY}/${IMAGE_PATH} | grep -e "\"${TAG}\"" | jq -r .Digest)
-
 # Push to the remote repository
 docker push ${REGISTRY}/${IMAGE_PATH}:${TAG}
+
+# Retrieve the DIGEST and print it out
+DIGEST=$(docker image ls --digests --format json ${REGISTRY}/${IMAGE_PATH} | grep -e "\"${TAG}\"" | jq -r .Digest)
 
 echo "[INFO] =============================================================================================================================="
 echo "[INFO] Image ${REGISTRY}/${IMAGE_PATH}:${TAG} built successfully."

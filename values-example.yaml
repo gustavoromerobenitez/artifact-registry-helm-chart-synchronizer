@@ -14,16 +14,16 @@ registry:
   projectId: *projectId
 
 image:
+  repository: testrepo
   path: *commonName
   tag: stable
-  digest: sha256:65a3abb4dce865134205ca2119cfa2746895aacd63defdfbf812df6d7c0abb28
+  digest: sha256:r3qu1r3d
 
 
 # The IAM Service Account
 # Must be created before deploying this application
 # Must have permissions:
-# - to read from Artifact Registry
-# - to administer any cluster that is to act upon
+# - to read and write in Artifact Registry
 iamServiceAccount:
   name: *commonName
   projectId: *projectId
@@ -34,4 +34,21 @@ kubernetesServiceAccount: *commonName
 
 debug: false
 
-schedule: "30 6 * * MON-FRI"
+schedule: "*/15 * * * *"
+
+#
+# List of registries that will require authentication
+#
+#authenticatedRegistries:
+#  #
+#  authenticated-registry-1.org.com:
+#    usernameSecret: authenticated-registry-1-secret
+#    usernameSecretKey: username
+#    passwordSecret: authenticated-registry-1-secret
+#    passwordSecretKey: password
+#  #
+#  authenticated-registry-2.org.com:
+#    usernameSecret: authenticated-registry-2-secret
+#    usernameSecretKey: username
+#    passwordSecret: authenticated-registry-2-secret
+#    passwordSecretKey: password

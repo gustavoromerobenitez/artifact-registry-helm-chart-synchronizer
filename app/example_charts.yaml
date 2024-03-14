@@ -5,25 +5,18 @@
 #############################################################
 
 #
-# List of registries that will require authentication
+# authenticatedRegistries:
+#   List of hostnames for the registries that will require authentication
 #
 authenticatedRegistries:
-  #
-  authenticated-registry-1.org.com:
-    usernameSecret: authenticated-registry-1-secret
-    usernameSecretKey: username
-    passwordSecret: authenticated-registry-1-secret
-    passwordSecretKey: password
-  #
-  authenticated-registry-2.org.com:
-    usernameSecret: authenticated-registry-2-secret
-    usernameSecretKey: username
-    passwordSecret: authenticated-registry-2-secret
-    passwordSecretKey: password
+  - authenticated-registry-1.org.com
+  - authenticated-registry-2.org.com
+
 
 #
-# List of Helm Charts to be pulled from their sources
-#  and then pushed to their destination in Artifact Registry
+# charts:
+#   List of Helm Charts to be pulled from their sources
+#   and then pushed to their destination in Artifact Registry
 #
 # IMPORTANT: Non-existing destination repositories will throw a non-fatal error
 #            Other charts will still be pulled

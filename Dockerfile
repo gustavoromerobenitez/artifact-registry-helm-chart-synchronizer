@@ -1,10 +1,9 @@
 FROM python:3-alpine
 
 ARG GCLOUD_SDK_CLI_VERSION=467.0.0
+ARG TRIVY_CLI_VERSION=0.49.1
 
-WORKDIR /copa
-
-COPY app/helm-charts-sync.py /app/helm-charts-sync.py
+COPY app/helm_chart_synchronizer.py /app/helm_chart_synchronizer.py
 COPY app/requirements.txt /app/requirements.txt
 
 ENV PATH=/usr/local/google-cloud-sdk/bin:$PATH
@@ -30,6 +29,9 @@ RUN apk update && \
     /usr/local/google-cloud-sdk/bin/gcloud config set core/custom_ca_certs_file /etc/ssl/certs/ca-certificates.crt && \
     /usr/local/google-cloud-sdk/bin/gcloud config set disable_usage_reporting true && \
     #
+    # Install Trivy
+    curl -sL -o /usr/bin/trivy "https://github.com/aquasecurity/trivy/releases/download/v{TRIVY_CLI_VERSION}/trivy_${TRIVY_CLI_VERSION}_Linux-64bit.tar.gz" && \
+    #
     apk del --purge curl bash openssl
 
 USER python
@@ -41,6 +43,8 @@ ENV PATH=/app:/usr/local/google-cloud-sdk/bin:$PATH
 # Upgrade pip to prevent security vulnerabilities
 RUN python -m pip install --upgrade pip && \
     # Install app pre-requisites
-    python -m pip install -r /app/requirements.txt
+    python -m pip install --upgrade -r /app/requirements.txt && \
+    # Install SAST/PolicyAsCode tool checkov
+    python -m pip install --upgrade setuptools checkov
 
-ENTRYPOINT ["python", "/app/helm-charts-sync.py"]
+ENTRYPOINT ["python", "/app/helm_chart_synchronizer.py"]
