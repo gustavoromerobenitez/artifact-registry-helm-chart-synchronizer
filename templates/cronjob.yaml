@@ -54,24 +54,50 @@ spec:
                   cpu: 30m
                   memory: 50Mi
               env:
-              - name: DEBUG
-                value: "{{ .Values.debug }}"
-              - name: ARTIFACT_REGISTRY_HOSTNAME
-                value: "{{ .Values.registry.host }}"
-              - name: ARTIFACT_REGISTRY_PROJECT_ID
-                value: "{{ .Values.registry.projectId }}"
-              {{- if .Values.authenticatedRegistries -}}
-              {{- range $registry , $value := .Values.authenticatedRegistries -}}
-              {{- $prefix := $registry | upper | replace "-" "_" | replace "." "_" }}
-              - name: {{ $prefix }}_USERNAME
-                valueFrom:
-                  secretKeyRef:
-                    name: {{ $value.usernameSecret }}
-                    key: {{ $value.usernameSecretKey }}
-              - name: {{ $prefix }}_PASSWORD
-                valueFrom:
-                  secretKeyRef:
-                    name: {{ $value.passwordSecret }}
-                    key: {{ $value.passwordSecretKey }}
-               {{- end -}}
-              {{ end -}}
+                - name: DEBUG
+                  value: "{{ .Values.debug }}"
+                - name: ARTIFACT_REGISTRY_HOSTNAME
+                  value: "{{ .Values.registry.host }}"
+                - name: ARTIFACT_REGISTRY_PROJECT_ID
+                  value: "{{ .Values.registry.projectId }}"
+                - name: VERIFY_CERTFICATES
+                  value: {{ if .Values.verifyRegistryCertificates }}"true"{{ else -}}"false"{{- end -}}
+                {{- if .Values.authenticatedRegistries -}}
+                {{- range $registry , $value := .Values.authenticatedRegistries -}}
+                {{- $prefix := $registry | upper | replace "-" "_" | replace "." "_" }}
+                - name: {{ $prefix }}_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $value.usernameSecret }}
+                      key: {{ $value.usernameSecretKey }}
+                - name: {{ $prefix }}_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $value.passwordSecret }}
+                      key: {{ $value.passwordSecretKey }}
+                {{- end -}}
+                {{ end }}
+              #
+              volumeMounts:
+                - name: charts-file-cm-volume
+                  mountPath: /app/config
+                  subPath: charts.yaml
+                  readOnly: true
+                #
+                {{ if .Values.verifyRegistryCertificates -}}
+                - name: trusted-certs-volume
+                  mountPath: /app/trusted-certs
+                  subPath: ca-bundle.pem
+                  readOnly: true
+                {{ end -}}
+          #
+          volumes:
+            - name: charts-file-cm-volume
+              configMap:
+                name: charts-file-cm
+            #
+            {{ if .Values.verifyRegistryCertificates -}}
+            - name: trusted-certs-volume
+              secret:
+                secretName: {{ if .Values.verifyRegistryCertificates.createSecret -}}{{ .Values.verifyRegistryCertificates.createSecret.name }}{{ else -}}{{ .Values.verifyRegistryCertificates.existingSecret }}{{ end -}}
+            {{ end -}}

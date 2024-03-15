@@ -41,10 +41,10 @@ WORKDIR /app
 ENV PATH=/app:/usr/local/google-cloud-sdk/bin:$PATH
 
 # Upgrade pip to prevent security vulnerabilities
-RUN python -m pip install --upgrade pip && \
+RUN python -m pip install --no-cache-dir --upgrade pip && \
     # Install app pre-requisites
-    python -m pip install --upgrade -r /app/requirements.txt && \
+    python -m pip install --no-cache-dir --upgrade -r /app/requirements.txt && \
     # Install SAST/PolicyAsCode tool checkov
-    python -m pip install --upgrade setuptools checkov
+    python -m pip install --no-cache-dir --upgrade setuptools checkov
 
 ENTRYPOINT ["python", "/app/helm_chart_synchronizer.py"]

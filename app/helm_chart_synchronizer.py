@@ -5,17 +5,18 @@ import tempfile
 import sys
 import yaml
 import argparse
-import pathlib
+import inspect
 
-# Static Code Analysis of pulled Helm charts
-import checkov
-
+from functools import partial
 
 from subprocess import run, CalledProcessError
 from multiprocessing import Pool, ProcessError
 
+currentdir = os.path.dirname( os.path.abspath( inspect.getfile( inspect.currentframe() ) ) )
+CERTIFICATE_BUNDLE_LOCATION = f"{currentdir}/trusted-certs/ca-bundle.pem"
+
 REQUIRED_ENVIRONMENT_VARIABLES = {
-  "COMMON": [ "ARTIFACT_REGISTRY_PROJECT_ID", "ARTIFACT_REGISTRY_HOSTNAME", "DEBUG" ]
+  "COMMON": [ "ARTIFACT_REGISTRY_PROJECT_ID", "ARTIFACT_REGISTRY_HOSTNAME", "VERIFY_CERTIFICATES", "DEBUG" ]
 }
 
 
@@ -82,27 +83,28 @@ def execute_cli_command (command, error_message, logs, capture_output=True, chec
 #
 # This function is meant to be run as a Process returning the lists: logs and synced_charts
 #
-def sync_chart (chart):
+def sync_chart ( verify_certificates, chart ):
 
   logs = []
   synced_charts = []
   errors = 0
   result = {}
 
-  source_registry = chart["source"].split("/")[0]
+  source_registry = chart["registry"]
+  source_repository = chart["repository"]
+  chart_name = chart["chart"]
 
-  name = "/".join(chart["source"].split("/")[1:])
-  source_repository = name.split("/")[0]
-
-  destination_repo = chart["destination"].split("/")[0]
+  destination_repo = chart["destination_repository"]
   destination_registry = f"oci://{os.environ['ARTIFACT_REGISTRY_HOSTNAME']}/{os.environ['ARTIFACT_REGISTRY_PROJECT_ID']}"
-  destination_full_path = f"{destination_registry}/{chart['destination']}"  # chart['destination'] contains the repository and the chart name
+
+  # add the source repository to the path to keep the charts organised in tArtifact Registry
+  destination_full_path = f"{destination_registry}/{destination_repo}/{source_repository}"
 
   versions = chart["versions"]
 
   if versions == []:
 
-      logs.append(f"[ERROR] At least one tag must be specified for {name}")
+      logs.append(f"[ERROR] At least one tag must be specified for {source_repository}/{chart_name} at {source_registry}")
 
   else:
 
@@ -110,7 +112,7 @@ def sync_chart (chart):
 
       logs.append(f"[INFO] Adding Helm repository locally: {source_registry}")
 
-      command = f"helm repo add {source_repository} https://{source_registry}"
+      command = f"helm repo add --force-update {source_repository} https://{source_registry}"
       error_message = f"Failed to add Helm repo locally: {source_registry}"
       execute_cli_command (command, error_message, logs )
 
@@ -132,29 +134,22 @@ def sync_chart (chart):
         error = False
 
         logs.append("[INFO] ---------------------------------------------------------------------------------------")
-        logs.append(f"[INFO] PROCESSING {name} version {version}")
+        logs.append(f"[INFO] PROCESSING {source_repository}/{chart_name} version {version}")
 
         try:
 
-          logs.append(f"[INFO] Adding Helm repository locally: {source_registry}")
+          logs.append(f"[INFO] Pulling Helm chart {source_repository}/{chart_name} version {version}")
 
-          command = f"helm repo add {source_repository} https://{source_registry}"
-          error_message = f"Failed to add Helm repo locally: {source_registry}"
-          execute_cli_command (command, error_message, logs )
+          command = f"helm pull {source_repository}/{chart_name} --version {version}"
 
-          command = f"helm repo update"
-          error_message = f"Failed to update local repository cache"
-          execute_cli_command (command, error_message, logs )
+          if verify_certificates:
+            command = f"{command} --ca-file {CERTIFICATE_BUNDLE_LOCATION}"
 
-          logs.append(f"[INFO] Pulling Helm chart {name} version {version}")
-
-          command = f"helm pull {name} --version {version}"
-          error_message = f"Failed to pull chart {name}"
+          error_message = f"Failed to pull chart {source_repository}/{chart_name} from {source_registry}"
           execute_cli_command (command, error_message, logs )
 
           # Generate the pulled chart file name
-          chart_short_name=f"{name.split('/')[-1]}"
-          pulled_chart = f"{chart_short_name}-{version}.tgz"
+          pulled_chart = f"{chart_name}-{version}.tgz"
 
           logs.append(f"[INFO] Pushing Helm chart file {pulled_chart} to {destination_full_path}")
 
@@ -162,7 +157,7 @@ def sync_chart (chart):
           error_message = f"Failed to push chart file {pulled_chart} to {destination_full_path}"
           execute_cli_command (command, error_message, logs )
 
-          logs.append(f"[INFO] SUCCESS - chart {name} version {version} pushed to {destination_full_path} ")
+          logs.append(f"[INFO] SUCCESS - chart {chart_name} version {version} pushed to {destination_full_path} ")
           synced_charts.append(f"{pulled_chart}")
 
         except Exception as e:
@@ -183,7 +178,7 @@ def sync_chart (chart):
 #  i.e.: Artifact Regsitry and any authenticated regsitries
 #         declared in the config file
 #
-def authenticate_against_registries (charts):
+def authenticate_against_registries (config, artifact_registry_hostname, verify_certificates = False ):
 
   authentication_logs = []
 
@@ -205,7 +200,7 @@ def authenticate_against_registries (charts):
   # Check authentication against the authenticatedRegistries declared in the file, if there are any
   if "authenticatedRegistries" in config.keys():
 
-    for registry in charts["authenticatedRegistries"]:
+    for registry in config["authenticatedRegistries"]:
 
       # The username and password should be present in environment variables
       #  named like the registry they belong to,
@@ -223,6 +218,10 @@ def authenticate_against_registries (charts):
       try:
 
         command = f"helm registry login {registry} --username {username} --password {password}"
+
+        if verify_certificates:
+          command = f"{command} --ca-file {CERTIFICATE_BUNDLE_LOCATION}"
+
         error_message = f"Failed to log on to {registry} using the provided credentials"
         # execute_cli_command (command, error_message, authentication_logs )
 
@@ -247,10 +246,12 @@ def main (charts_file, num_parallel_tasks):
   artifact_registry_project_id = os.environ["ARTIFACT_REGISTRY_PROJECT_ID"]
   artifact_registry_hostname = os.environ["ARTIFACT_REGISTRY_HOSTNAME"]
   debug = os.environ["DEBUG"].lower() in ['true',1,'yes','y']
+  verify_certificates = os.environ["VERIFY_CERTIFICATES"].lower() in ['true',1,'yes','y']
 
   print("[INFO] ==================================================================================")
   print(f"[INFO] ARTIFACT_REGISTRY_PROJECT_ID: {artifact_registry_project_id}")
   print(f"[INFO] ARTIFACT_REGISTRY_HOSTNAME: {artifact_registry_hostname}")
+  print(f"[INFO] VERIFY_CERTIFICATES: {verify_certificates}")
   print(f"[INFO] DEBUG: {debug}")
   print("[INFO] ==================================================================================")
 
@@ -258,7 +259,7 @@ def main (charts_file, num_parallel_tasks):
   with open(charts_file) as f:
       config = yaml.safe_load(f)
 
-  authenticate_against_registries (config)
+  authenticate_against_registries (config, artifact_registry_hostname, verify_certificates)
 
   # Limit the number of parallel processes to avoid issues
   # when the chart list is shorter than the requested number of parallel processes
@@ -273,18 +274,22 @@ def main (charts_file, num_parallel_tasks):
   errors = 0
   chunk_size = int(len(charts)/num_parallel_tasks)
 
+  parallel_function = partial ( sync_chart, verify_certificates )
+
   with Pool(num_parallel_tasks) as p:
 
-    for result in p.imap_unordered(sync_chart, charts, chunk_size):
+    for result in p.imap_unordered(parallel_function, charts, chunk_size):
 
       i += 1
       synced_charts += result["synced_charts"]
       errors += result["errors"]
 
-      print(f"[INFO] {i} charts processed with {len(synced_charts)} tags updated so far...")
-
       for log in result["logs"]:
           print(log)
+
+      print("[INFO]")
+      print(f"[INFO] Progress: {i} charts processed with {len(synced_charts)} versions updated so far...")
+      print("[INFO]")
 
     p.close()
     p.join()
@@ -299,7 +304,7 @@ def main (charts_file, num_parallel_tasks):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser( description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('charts_file', metavar="< relative or absolute path to the charts YAML file >", help='The relative or absolute path to the YAML file that contains the list of Helm charts and versions to be synchronized.')
+    parser.add_argument('-f','--charts-file', type = str,  required = False, default = "config/charts.yaml", metavar="< relative or absolute path to the charts YAML file >", help='The relative or absolute path to the YAML file that contains the list of Helm charts and versions to be synchronized.')
     parser.add_argument('-n','--num-parallel-tasks', type = int, required = False, default = 10, metavar="NUM_PARALLEL_TASKS", help='The max number of parallel tasks')
     args = parser.parse_args()
     main(args.charts_file, args.num_parallel_tasks)

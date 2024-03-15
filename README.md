@@ -8,55 +8,13 @@ This repository contains:
 * A Helm chart to deploy multiple Kubernetes Cronjobs, one per each schedule (Scale Up and Scale Down), per node pool, per cluster.
 * A boostrapping script to create the GCP resoruces necessary to test the application.
 
-## app/helm_chart_synchronizer.py
+## Python App documentation
 
-The script reads environment variables to determine the location of the Artifact Registry:
-- A GCP Project ID
-- A GCP Location (Region or Zone)
+You can find the [documentation about the Python App](./app/README.md) in the [app folder](./app)
 
-It then reads a YAML configuration file that must be passed as an argument, which details a series of Helm charts to be pulled, their source locations and destination repositories within Artifact Registry.
+## Helm Chart
 
-The script accepts a second optional argument to define the level of parallelism. It is either the number of Helm charts in the file or 10, whichever is lowest.
-
-## SAST Tools included
-
-### Trivy CLI
-
-### Checkov
-
-
-### Testing Python Application locally
-
-This application can be run using Python **3.10** or higher.
-
-A test file called [example_charts.yaml](./app/example_charts.yaml) is included in this repository.
-
-Follow these steps to execute the script locally:
-
-```
-# Configure the required environment variables
-export ARTIFACT_REGISTRY_PROJECT_ID=test-project
-export ARTIFACT_REGISTRY_HOSTNAME=us-east1-docker.pkg.dev
-export DEBUG=false
-
-# Move into the application directory
-cd app/
-
-# Create a Python Virtual Environment
-python -m venv poc-venv
-
-# Activate the Virtual Environment
-source poc-venv/bin/activate
-
-# Install the requirements
-python -m pip install -r <path-to>/requirements.txt
-
-# Make sure you're authenticated against Google Cloud
-gcloud auth login
-
-* Execute the script, passing the charts file as an argument
-python helm_chart_synchronizer.py example_charts.yaml
-```
+You can find the [documentation about the Helm chart](./README_HELM.md)
 
 ## Bootstrapping the Proof of Concept environment
 
@@ -112,42 +70,4 @@ Example:
 ./build.sh us-east1-docker.pkg.dev/test-project/testrepo helm-chart-synchronizer 1.0.0
 ```
 
-## Helm Chart
 
-The Helm Chart contained in this repository creates a Kubernetes CronJob that runs the helm-chart-synchronizer on a schedule.
-
-### Rendering the templates
-
-To render the Helm templates locally, from the **root** of this repository, execute the following command:
-
-```
-mkdir -p rendered && helm template --debug -f <VALUES-FILE-NAME>.yaml . > rendered/<RENDERED-TEMPLATE-NAME>.yaml
-```
-
-### Installing the Chart in the GKE cluster
-
-[Install the Helm CLI](https://helm.sh/docs/intro/install/#from-script) if it is not present on your workspace.
-
-Authenticate against Google Cloud:
-
-```
-gcloud auth login
-```
-
-Authenticate against the cluster:
-
-```
-gcloud container clusters get-credentials CLUSTER_NAME --project PROJECT_ID --location REGION_OR_ZONE
-```
-
-To install the release and create the Cronjobs in the selected Namespace, execute the following command from the **root** of this repository:
-
-```
-helm install RELEASE_NAME . --namespace NAMESPACE --values <VALUES-FILE-NAME>.yaml
-```
-
-To update the release, change any values or edit the templates and execute the following command from the **root** of this repository:
-
-```
-helm upgrade RELEASE_NAME . --namespace NAMESPACE --values <VALUES-FILE-NAME>.yaml
-```

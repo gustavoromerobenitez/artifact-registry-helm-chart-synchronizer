@@ -1,0 +1,70 @@
+#############################################################
+#
+# Helm Charts Sync
+#
+#############################################################
+
+#
+# authenticatedRegistries:
+#   List of hostnames for the registries that will require authentication
+#
+authenticatedRegistries:
+  - authenticated-registry-1.org.com
+  # - authenticated-registry-2.org.com
+
+
+#
+# charts:
+#   List of Helm Charts to be pulled from their sources
+#   and then pushed to their destination in Artifact Registry
+#
+# IMPORTANT: Non-existing destination repositories will throw a non-fatal error
+#            Other charts will still be pulled
+#
+charts:
+- registry: charts.jetstack.io
+  repository: cert-manager
+  chart: cert-manager
+  destination_repository: testrepo
+  versions:
+  - v1.14.2
+  # Non-fatal error
+  - latest
+#
+- registry: charts.bitnami.com/bitnami
+  repository: bitnami
+  chart: redis
+  destination_repository: testrepo
+  versions:
+  - 18.19.2
+  - 18.19.1
+  - 18.19.0
+#
+- registry: charts.bitnami.com/bitnami
+  repository: bitnami
+  chart: thanos
+  destination_repository: testrepo
+  versions:
+  - 14.0.1
+  - 14.0.0
+#
+# example-non-existing destination repository
+#
+#- source: charts.jetstack.io/cert-manager/cert-manager-approver-policy
+#  destination: non-existent-repository/cert-manager
+#  versions:
+#  - v0.12.1
+#
+# example of private registries
+#
+#- source: open-registry.my-org.com/some-chart
+#  destination: testrepo/private-registry-charts
+#  versions:
+#  - v1.14.2
+#  - latest
+#- source: authenticated-registry.my-org.com/some-repo/some-chart
+#  destination: testrepo/private-registry-charts
+#  versions:
+#  - 1.2.3
+#  - 4.5.6
+#  - latest

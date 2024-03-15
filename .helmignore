@@ -23,7 +23,7 @@
 .idea/
 *.tmproj
 
-app/
+app/virtualenv/
 rendered/
 *.sh
 Dockerfile

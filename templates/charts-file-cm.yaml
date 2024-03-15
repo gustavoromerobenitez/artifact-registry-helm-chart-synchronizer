@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: charts-file-cm
+data:
+  charts.yaml: |
+{{ .Files.Get "app/config/charts.yaml" | indent 4 }}
