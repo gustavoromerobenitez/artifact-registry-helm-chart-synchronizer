@@ -8,9 +8,9 @@
 # authenticatedRegistries:
 #   List of hostnames for the registries that will require authentication
 #
-authenticatedRegistries:
-  - authenticated-registry-1.org.com
-  # - authenticated-registry-2.org.com
+#authenticatedRegistries:
+#  - authenticated-registry-1.org.com
+#  - authenticated-registry-2.org.com
 
 
 #

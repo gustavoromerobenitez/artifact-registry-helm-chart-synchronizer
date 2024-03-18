@@ -220,10 +220,10 @@ if ! gcloud artifacts repositories list --location="${REGION}" --project="${PROJ
       --immutable-tags \
       --project="${PROJECT_ID}"
 
-  echo "[INFO] Granting Artifact Registry reader permissions to the Google Service Account..."
+  echo "[INFO] Granting Artifact Registry writer permissions to the Google Service Account..."
   gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
       --member "serviceAccount:${GCP_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" \
-      --role "roles/artifactregistry.reader"
+      --role "roles/artifactregistry.writer"
 
   echo "[INFO] Binding the Google Service Account and the Kubernetes Service Account..."
   gcloud iam service-accounts add-iam-policy-binding "${GCP_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" \

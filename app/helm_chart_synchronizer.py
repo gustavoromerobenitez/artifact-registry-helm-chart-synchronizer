@@ -12,8 +12,8 @@ from functools import partial
 from subprocess import run, CalledProcessError
 from multiprocessing import Pool, ProcessError
 
-currentdir = os.path.dirname( os.path.abspath( inspect.getfile( inspect.currentframe() ) ) )
-CERTIFICATE_BUNDLE_LOCATION = f"{currentdir}/trusted-certs/ca-bundle.pem"
+CURRENTDIR = os.path.dirname( os.path.abspath( inspect.getfile( inspect.currentframe() ) ) )
+CERTIFICATE_BUNDLE_LOCATION = f"{CURRENTDIR}/trusted-certs/ca-bundle.pem"
 
 REQUIRED_ENVIRONMENT_VARIABLES = {
   "COMMON": [ "ARTIFACT_REGISTRY_PROJECT_ID", "ARTIFACT_REGISTRY_HOSTNAME", "VERIFY_CERTIFICATES", "DEBUG" ]
@@ -255,9 +255,15 @@ def main (charts_file, num_parallel_tasks):
   print(f"[INFO] DEBUG: {debug}")
   print("[INFO] ==================================================================================")
 
+
+  # Build the abosolute path to the charts file if required
+  if not charts_file.startswith("/"):
+    charts_file = f"{CURRENTDIR}/{charts_file}"
+
   config = None
+
   with open(charts_file) as f:
-      config = yaml.safe_load(f)
+    config = yaml.safe_load(f)
 
   authenticate_against_registries (config, artifact_registry_hostname, verify_certificates)
 
@@ -265,7 +271,7 @@ def main (charts_file, num_parallel_tasks):
   # when the chart list is shorter than the requested number of parallel processes
   charts = config['charts']
   if len(charts) < num_parallel_tasks:
-      num_parallel_tasks=len(charts)
+    num_parallel_tasks=len(charts)
 
   print(f"[INFO] {len(charts)} charts to process in parallel with {num_parallel_tasks} workers.")
 

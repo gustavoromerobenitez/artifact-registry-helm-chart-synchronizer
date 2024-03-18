@@ -48,11 +48,11 @@ spec:
                 runAsUser: 1000
               resources:
                 limits:
-                  cpu: 500m
-                  memory: 200Mi
+                  cpu: 1000m
+                  memory: 1Gi
                 requests:
-                  cpu: 30m
-                  memory: 50Mi
+                  cpu: 500m
+                  memory: 500Mi
               env:
                 - name: DEBUG
                   value: "{{ .Values.debug }}"
@@ -80,13 +80,13 @@ spec:
               #
               volumeMounts:
                 - name: charts-file-cm-volume
-                  mountPath: /app/config
+                  mountPath: /app/config/charts.yaml
                   subPath: charts.yaml
                   readOnly: true
                 #
                 {{ if .Values.verifyRegistryCertificates -}}
                 - name: trusted-certs-volume
-                  mountPath: /app/trusted-certs
+                  mountPath: /app/trusted-certs/ca-bundle.pem
                   subPath: ca-bundle.pem
                   readOnly: true
                 {{ end -}}
