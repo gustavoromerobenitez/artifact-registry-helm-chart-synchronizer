@@ -24,7 +24,7 @@ REQUIRED_ENVIRONMENT_VARIABLES = {
 #
 # Checks that all environment variables passed as argument are set
 #
-def check_environment_variables ( environment_vars ):
+def check_environment_variables ( environment_vars, debug=False ):
 
   missing = []
 
@@ -51,13 +51,13 @@ def check_environment_variables ( environment_vars ):
 # In case of failure it will return the error logs and raise an Exception
 #   to allow upstream code to react to the failure, if required
 #
-def execute_cli_command (command, error_message, logs, capture_output=True, check=True, shell=True, text=True):
+def execute_cli_command (command, error_message, logs, debug=False, capture_output=True, check=True, shell=True, text=True):
 
   command_result=None
 
   try:
 
-    print(f"[DEBUG] COMMAND: {command}", file=sys.stderr)
+    not debug or logs.append(f"[DEBUG] COMMAND: {command}")
     command_result = run(command, capture_output=capture_output, check=check, shell=shell, text=text)
 
   except CalledProcessError as e:
@@ -83,7 +83,7 @@ def execute_cli_command (command, error_message, logs, capture_output=True, chec
 #
 # This function is meant to be run as a Process returning the lists: logs and synced_charts
 #
-def sync_chart ( verify_certificates, chart ):
+def sync_chart ( chart, verify_certificates, debug):
 
   logs = []
   synced_charts = []
@@ -114,11 +114,11 @@ def sync_chart ( verify_certificates, chart ):
 
       command = f"helm repo add --force-update {source_repository} https://{source_registry}"
       error_message = f"Failed to add Helm repo locally: {source_registry}"
-      execute_cli_command (command, error_message, logs )
+      execute_cli_command (command, error_message, logs, debug = debug )
 
       command = f"helm repo update"
       error_message = f"Failed to update local repository cache"
-      execute_cli_command (command, error_message, logs )
+      execute_cli_command (command, error_message, logs, debug = debug )
 
     except Exception as e:
       logs.append(f"[ERROR] Exception: {e} ")
@@ -146,7 +146,7 @@ def sync_chart ( verify_certificates, chart ):
             command = f"{command} --ca-file {CERTIFICATE_BUNDLE_LOCATION}"
 
           error_message = f"Failed to pull chart {source_repository}/{chart_name} from {source_registry}"
-          execute_cli_command (command, error_message, logs )
+          execute_cli_command (command, error_message, logs, debug = debug )
 
           # Generate the pulled chart file name
           pulled_chart = f"{chart_name}-{version}.tgz"
@@ -155,7 +155,7 @@ def sync_chart ( verify_certificates, chart ):
 
           command = f"helm push {pulled_chart} {destination_full_path}"
           error_message = f"Failed to push chart file {pulled_chart} to {destination_full_path}"
-          execute_cli_command (command, error_message, logs )
+          execute_cli_command (command, error_message, logs, debug = debug )
 
           logs.append(f"[INFO] SUCCESS - chart {chart_name} version {version} pushed to {destination_full_path} ")
           synced_charts.append(f"{pulled_chart}")
@@ -178,7 +178,7 @@ def sync_chart ( verify_certificates, chart ):
 #  i.e.: Artifact Regsitry and any authenticated regsitries
 #         declared in the config file
 #
-def authenticate_against_registries (config, artifact_registry_hostname, verify_certificates = False ):
+def authenticate_against_registries (config, artifact_registry_hostname, verify_certificates = False, debug=False ):
 
   authentication_logs = []
 
@@ -188,7 +188,7 @@ def authenticate_against_registries (config, artifact_registry_hostname, verify_
 
     command = f"gcloud auth configure-docker {artifact_registry_hostname}"
     error_message = f"[FATAL] Failed to authenticate against {artifact_registry_hostname}"
-    execute_cli_command (command, error_message, authentication_logs )
+    execute_cli_command (command, error_message, authentication_logs, debug = debug )
 
   except Exception as e:
 
@@ -208,7 +208,7 @@ def authenticate_against_registries (config, artifact_registry_hostname, verify_
       username_env_var_name = f'{registry.upper().replace("-","_").replace(".","_")}_USERNAME'
       password_env_var_name = f'{registry.upper().replace("-","_").replace(".","_")}_PASSWORD'
 
-      check_environment_variables( [ username_env_var_name, password_env_var_name ] ) or sys.exit(3)
+      check_environment_variables( [ username_env_var_name, password_env_var_name ], debug) or sys.exit(3)
 
       username = os.environ[ username_env_var_name ]
       password = os.environ[ password_env_var_name ]
@@ -223,7 +223,7 @@ def authenticate_against_registries (config, artifact_registry_hostname, verify_
           command = f"{command} --ca-file {CERTIFICATE_BUNDLE_LOCATION}"
 
         error_message = f"Failed to log on to {registry} using the provided credentials"
-        # execute_cli_command (command, error_message, authentication_logs )
+        execute_cli_command (command, error_message, authentication_logs, debug = debug )
 
       except CalledProcessError as e:
 
@@ -265,7 +265,7 @@ def main (charts_file, num_parallel_tasks):
   with open(charts_file) as f:
     config = yaml.safe_load(f)
 
-  authenticate_against_registries (config, artifact_registry_hostname, verify_certificates)
+  authenticate_against_registries (config, artifact_registry_hostname, verify_certificates = verify_certificates, debug = debug)
 
   # Limit the number of parallel processes to avoid issues
   # when the chart list is shorter than the requested number of parallel processes
@@ -280,7 +280,7 @@ def main (charts_file, num_parallel_tasks):
   errors = 0
   chunk_size = int(len(charts)/num_parallel_tasks)
 
-  parallel_function = partial ( sync_chart, verify_certificates )
+  parallel_function = partial ( sync_chart, verify_certificates = verify_certificates, debug = debug )
 
   with Pool(num_parallel_tasks) as p:
 
