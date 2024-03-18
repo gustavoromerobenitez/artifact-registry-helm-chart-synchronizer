@@ -157,13 +157,13 @@ if ! gcloud container node-pools list --cluster ${CLUSTER_NAME} --zone ${ZONE} -
       --cluster "${CLUSTER_NAME}" \
       --zone "${ZONE}" \
       --spot \
-      --machine-type "e2-micro" \
+      --machine-type "e2-small" \
       --image-type "COS_CONTAINERD" \
       --disk-type "pd-standard" \
-      --disk-size "10" \
+      --disk-size "20" \
       --metadata disable-legacy-endpoints=true \
       --scopes "https://www.googleapis.com/auth/devstorage.read_only","https://www.googleapis.com/auth/logging.write","https://www.googleapis.com/auth/monitoring","https://www.googleapis.com/auth/servicecontrol","https://www.googleapis.com/auth/service.management.readonly","https://www.googleapis.com/auth/trace.append" \
-      --num-nodes "1" \
+      --num-nodes "0" \
       --enable-autoscaling \
       --total-min-nodes "0" \
       --total-max-nodes "1" \
@@ -171,7 +171,7 @@ if ! gcloud container node-pools list --cluster ${CLUSTER_NAME} --zone ${ZONE} -
       --enable-autoupgrade \
       --enable-autorepair \
       --max-surge-upgrade 1 \
-      --max-unavailable-upgrade 0 \
+      --max-unavailable-upgrade 1 \
       --node-locations "${ZONE}" \
       --node-taints "workloadType=user:NoSchedule" \
       --node-labels "workloadType=user"
@@ -182,7 +182,7 @@ echo "[INFO] Authenticating against the cluster..."
 gcloud container clusters get-credentials ${CLUSTER_NAME} --project=${PROJECT_ID} --location=${ZONE}
 
 
-if ! kubectl get namespace "${NAMESPACE}"; then
+if ! kubectl get namespace "${NAMESPACE}" > /dev/null; then
 
   echo "[INFO] Creating the Kubernetes Namespace for the application..."
   kubectl create namespace "${NAMESPACE}"
@@ -190,7 +190,7 @@ if ! kubectl get namespace "${NAMESPACE}"; then
 fi
 
 
-if ! kubectl get serviceaccount "${KSA_NAME}" --namespace "${NAMESPACE}"; then
+if ! kubectl get serviceaccount "${KSA_NAME}" --namespace "${NAMESPACE}" > /dev/null; then
 
   echo "[INFO] Creating the Kubernetes Service Account for the application..."
   kubectl create serviceaccount "${KSA_NAME}" --namespace "${NAMESPACE}"
@@ -198,6 +198,14 @@ if ! kubectl get serviceaccount "${KSA_NAME}" --namespace "${NAMESPACE}"; then
   echo "[INFO] Annotating the Service Account to configure Workload Identity..."
   kubectl annotate serviceaccount "${KSA_NAME}" --namespace "${NAMESPACE}" \
         iam.gke.io/gcp-service-account=${GCP_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com
+
+fi
+
+
+if ! gcloud iam service-accounts list --project="${PROJECT_ID}" --format="value(NAME)" | grep "${GCP_SA_NAME}" >/dev/null; then
+
+  echo "[INFO] Creating the Google Service Account..."
+  gcloud iam service-accounts create ${GCP_SA_NAME} --project=${PROJECT_ID}
 
 fi
 
@@ -212,28 +220,18 @@ if ! gcloud artifacts repositories list --location="${REGION}" --project="${PROJ
       --immutable-tags \
       --project="${PROJECT_ID}"
 
+  echo "[INFO] Granting Artifact Registry reader permissions to the Google Service Account..."
+  gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
+      --member "serviceAccount:${GCP_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" \
+      --role "roles/artifactregistry.reader"
+
+  echo "[INFO] Binding the Google Service Account and the Kubernetes Service Account..."
+  gcloud iam service-accounts add-iam-policy-binding "${GCP_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" \
+      --role roles/iam.workloadIdentityUser \
+      --member "serviceAccount:${PROJECT_ID}.svc.id.goog[${NAMESPACE}/${KSA_NAME}]" \
+      --project="${PROJECT_ID}"
+
 fi
-
-
-if ! gcloud iam service-accounts list --project="${PROJECT_ID}" --format="value(NAME)" | grep "${GCP_SA_NAME}" >/dev/null; then
-
-  echo "[INFO] Creating the Google Service Account..."
-  gcloud iam service-accounts create ${GCP_SA_NAME} --project=${PROJECT_ID}
-
-fi
-
-
-echo "[INFO] Granting Artifact Registry reader permissions to the Google Service Account..."
-gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
-    --member "serviceAccount:${GCP_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" \
-    --role "roles/artifactregistry.reader"
-
-
-echo "[INFO] Binding the Google Service Account and the Kubernetes Service Account..."
-gcloud iam service-accounts add-iam-policy-binding "${GCP_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" \
-    --role roles/iam.workloadIdentityUser \
-    --member "serviceAccount:${PROJECT_ID}.svc.id.goog[${NAMESPACE}/${KSA_NAME}]" \
-    --project="${PROJECT_ID}"
 
 
 if [[ "$BUILD_AND_PUSH" == "YES" ]]; then

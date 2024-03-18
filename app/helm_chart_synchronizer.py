@@ -193,7 +193,7 @@ def authenticate_against_registries (config, artifact_registry_hostname, verify_
   except Exception as e:
 
     for log in authentication_logs:
-        print(log)
+        print(log, file=sys.stderr)
 
     sys.exit(1)
 
@@ -228,9 +228,9 @@ def authenticate_against_registries (config, artifact_registry_hostname, verify_
       except CalledProcessError as e:
 
         for log in authentication_logs:
-          print(log)
+          print(log, file=sys.stderr)
 
-        print(f"[FATAL] Failed to authenticate against {registry}")
+        print(f"[FATAL] Failed to authenticate against {registry}", file=sys.stderr)
 
         sys.exit(2)
 
