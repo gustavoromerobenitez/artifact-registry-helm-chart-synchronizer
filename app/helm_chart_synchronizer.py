@@ -105,6 +105,7 @@ def sync_chart ( chart, verify_certificates, debug):
   if versions == []:
 
       logs.append(f"[ERROR] At least one tag must be specified for {source_repository}/{chart_name} at {source_registry}")
+      errors += 1
 
   else:
 
@@ -125,44 +126,44 @@ def sync_chart ( chart, verify_certificates, debug):
       errors += len(versions)
 
 
-    with tempfile.TemporaryDirectory() as tmpdir:
+    if errors == 0:
 
-      os.chdir(os.path.abspath(tmpdir))
+      with tempfile.TemporaryDirectory() as tmpdir:
 
-      for version in versions:
+        os.chdir(os.path.abspath(tmpdir))
 
-        error = False
+        for version in versions:
 
-        logs.append("[INFO] ---------------------------------------------------------------------------------------")
-        logs.append(f"[INFO] PROCESSING {source_repository}/{chart_name} version {version}")
+          logs.append("[INFO] ---------------------------------------------------------------------------------------")
+          logs.append(f"[INFO] PROCESSING {source_repository}/{chart_name} version {version}")
 
-        try:
+          try:
 
-          logs.append(f"[INFO] Pulling Helm chart {source_repository}/{chart_name} version {version}")
+            logs.append(f"[INFO] Pulling Helm chart {source_repository}/{chart_name} version {version}")
 
-          command = f"helm pull {source_repository}/{chart_name} --version {version}"
+            command = f"helm pull {source_repository}/{chart_name} --version {version}"
 
-          if verify_certificates:
-            command = f"{command} --ca-file {CERTIFICATE_BUNDLE_LOCATION}"
+            if verify_certificates:
+              command = f"{command} --ca-file {CERTIFICATE_BUNDLE_LOCATION}"
 
-          error_message = f"Failed to pull chart {source_repository}/{chart_name} from {source_registry}"
-          execute_cli_command (command, error_message, logs, debug = debug )
+            error_message = f"Failed to pull chart {source_repository}/{chart_name} from {source_registry}"
+            execute_cli_command (command, error_message, logs, debug = debug )
 
-          # Generate the pulled chart file name
-          pulled_chart = f"{chart_name}-{version}.tgz"
+            # Generate the pulled chart file name
+            pulled_chart = f"{chart_name}-{version}.tgz"
 
-          logs.append(f"[INFO] Pushing Helm chart file {pulled_chart} to {destination_full_path}")
+            logs.append(f"[INFO] Pushing Helm chart file {pulled_chart} to {destination_full_path}")
 
-          command = f"helm push {pulled_chart} {destination_full_path}"
-          error_message = f"Failed to push chart file {pulled_chart} to {destination_full_path}"
-          execute_cli_command (command, error_message, logs, debug = debug )
+            command = f"helm push {pulled_chart} {destination_full_path}"
+            error_message = f"Failed to push chart file {pulled_chart} to {destination_full_path}"
+            execute_cli_command (command, error_message, logs, debug = debug )
 
-          logs.append(f"[INFO] SUCCESS - chart {chart_name} version {version} pushed to {destination_full_path} ")
-          synced_charts.append(f"{pulled_chart}")
+            logs.append(f"[INFO] SUCCESS - chart {chart_name} version {version} pushed to {destination_full_path} ")
+            synced_charts.append(f"{pulled_chart}")
 
-        except Exception as e:
-          logs.append(f"[ERROR] Exception: {e} ")
-          errors +=1
+          except Exception as e:
+            logs.append(f"[ERROR] Exception: {e} ")
+            errors +=1
 
 
   result["logs"] = logs
@@ -217,7 +218,7 @@ def authenticate_against_registries (config, artifact_registry_hostname, verify_
 
       try:
 
-        command = f"helm registry login {registry} --username {username} --password {password}"
+        command = f"helm registry login {registry} --username '{username}' --password '{password}'"
 
         if verify_certificates:
           command = f"{command} --ca-file {CERTIFICATE_BUNDLE_LOCATION}"
@@ -225,7 +226,7 @@ def authenticate_against_registries (config, artifact_registry_hostname, verify_
         error_message = f"Failed to log on to {registry} using the provided credentials"
         execute_cli_command (command, error_message, authentication_logs, debug = debug )
 
-      except CalledProcessError as e:
+      except Exception as e:
 
         for log in authentication_logs:
           print(log, file=sys.stderr)
