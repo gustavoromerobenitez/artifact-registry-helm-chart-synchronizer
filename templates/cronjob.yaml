@@ -42,6 +42,11 @@ spec:
           restartPolicy: Never
           containers:
             - name: {{ .Values.commonName }}
+              args:
+                - "-n"
+                - "{{ .Values.numParallelTasks }}"
+                - "-p"
+                - "{{ .Values.pauseBetweenOperations }}"
               image: "{{ printf "%s/%s/%s/%s:%s@%s" .Values.registry.host .Values.registry.projectId .Values.image.repository .Values.image.path .Values.image.tag .Values.image.digest | lower }}"
               imagePullPolicy: IfNotPresent
               securityContext:
@@ -51,7 +56,7 @@ spec:
                   cpu: 1000m
                   memory: 1Gi
                 requests:
-                  cpu: 500m
+                  cpu: 750m
                   memory: 500Mi
               env:
                 - name: DEBUG
@@ -62,6 +67,20 @@ spec:
                   value: "{{ .Values.registry.projectId }}"
                 - name: VERIFY_CERTIFICATES
                   value: {{ if .Values.verifyRegistryCertificates }}"true"{{ else -}}"false"{{- end -}}
+                {{- if .Values.useProxy }}
+                - name: HTTP_PROXY
+                  value: "{{ .Values.useProxy.proxyUrl }}"
+                - name: HTTPS_PROXY
+                  value: "{{ .Values.useProxy.proxyUrl }}"
+                - name: NO_PROXY
+                  value: "{{ .Values.useProxy.no_proxy }}"
+                - name: http_proxy
+                  value: "{{ .Values.useProxy.proxyUrl }}"
+                - name: https_proxy
+                  value: "{{ .Values.useProxy.proxyUrl }}"
+                - name: no_proxy
+                  value: "{{ .Values.useProxy.no_proxy }}"
+                {{ end -}}
                 {{- if .Values.authenticatedRegistries -}}
                 {{- range $registry , $value := .Values.authenticatedRegistries -}}
                 {{- $prefix := $registry | upper | replace "-" "_" | replace "." "_" }}
