@@ -8,7 +8,7 @@ COPY app/requirements.txt /app/requirements.txt
 ENV PATH=/usr/local/google-cloud-sdk/bin:$PATH
 
 RUN apk update && \
-    apk upgrade --available && \
+    apk upgrade --no-cache --available && \
     apk add --no-cache --upgrade curl bash openssl && \
     addgroup -g 1000 python && \
     adduser -u 1000 -D -G python python -h /app && \
