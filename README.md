@@ -13,6 +13,24 @@ This repository contains:
 * A [bootstrapping shell script](./bootstrap.sh) to create the GCP resources necessary to build, install and test the application.
 * A [build script](./build.sh) that simplifies the process of building the container images locally.
 
+## SAST Tools
+
+The default [Dockerfile](./Dockerfile) includes two SAST tools, [Checkov](#checkov) and [Trivy](#trivy), which will be executed on every pulled Helm chart before these are uploaded to Artifact Registry.
+
+Optionally, the user will be able to configure whether the process should fail if any Critical vulnerabilities are detected.
+
+They both generate reports that will be saved and uploaded to a *GCS bucket*. These reports are useful to asses the Security Posture of the environment, as well as a potential requirements for compliance and audit puposes.
+
+### Checkov
+
+[Checkov](https://www.checkov.io/) is an open source Static Code Analysis Tool (SAST) for scanning Infrastructure as Code (IaC) files for security or compliance problems. It is also called a **Policy-as-Code** tool.
+
+It [supports many IaC formats](https://www.checkov.io/1.Welcome/What%20is%20Checkov.html#supported-iac-types), including Helm.
+
+### Trivy
+
+[Trivy](https://trivy.dev/) is an open source Security Scanning tool which supports [a wide range of languages, pakages and configuration files](https://aquasecurity.github.io/trivy/v0.50/docs/coverage/) including [Helm templates](https://aquasecurity.github.io/trivy/v0.50/docs/coverage/iac/helm/).
+
 ## Bootstrapping the Proof of Concept environment
 
 The repository includes a few helper scripts to deploy a Proof-of-Concept environment to test the application.

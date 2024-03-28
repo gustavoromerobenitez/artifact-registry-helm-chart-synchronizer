@@ -38,7 +38,7 @@ USER python
 
 WORKDIR /app
 
-ENV PATH=/app:/usr/local/google-cloud-sdk/bin:$PATH
+ENV PATH=/app:/app/.local/bin:/usr/local/google-cloud-sdk/bin:$PATH
 
 # Upgrade pip to prevent security vulnerabilities
 RUN python -m pip install --no-cache-dir --upgrade pip && \

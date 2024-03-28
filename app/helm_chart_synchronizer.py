@@ -80,6 +80,26 @@ def execute_cli_command (command, error_message, logs, debug=False, capture_outp
 
 ############################################################################################
 #
+# Executes a checkov scan on the helm chart
+#
+def run_checkov ( pulled_chart_file_name, chart_name):
+
+  output_file = f"{chart_name}.checkov.json"
+  command = f"tar xf {pulled_chart_file_name} && checkov -d {chart_name} -o json --quiet --compact --skip-check CKV_K8S_21,LOW --framework helm,kubernetes,secrets > {output_file}"
+  error_message = f"Failed to run checkov on chart {chart_name}."
+  execute_cli_command (command, error_message, logs, debug = debug )
+
+  # TODO Upload the file, sign the scan report
+  #command = f"gcloud storage cp {output_file} {bucket_url}"
+  #error_message = f"Failed to run checkov on chart {chart_name}."
+  #execute_cli_command (command, error_message, logs, debug = debug )
+
+  # TODO Decide whether to fail here ?
+
+
+
+############################################################################################
+#
 # Pulls a chart from its source registry
 #  and pushes it to its target repository in Artifact Registry
 #
@@ -129,25 +149,27 @@ def sync_chart ( chart, authenticated_registries, pause_between_operations, dest
     if username is not None and password is not None:
       command_optional_args = f"{command_optional_args} --username '{username}' --password '{password}'"
 
-    try:
+    if not source_registry.startswith("oci://"):
+      # helm repo commands are not supporting for OCI repositories
+      try:
 
-      logs.append("[INFO] ---------------------------------------------------------------------------------------")
-      logs.append(f"[INFO] Adding Helm repository locally: {source_registry}")
+        logs.append("[INFO] ---------------------------------------------------------------------------------------")
+        logs.append(f"[INFO] Adding Helm repository locally: {source_registry}")
 
-      command = f"helm repo add --force-update {command_optional_args} {source_repository} https://{source_registry}"
-      error_message = f"Failed to add Helm repo locally: {source_registry}"
-      execute_cli_command (command, error_message, logs, debug = debug )
+        command = f"helm repo add --force-update {command_optional_args} {source_repository} {source_registry}"
+        error_message = f"Failed to add Helm repo locally: {source_registry}"
+        execute_cli_command (command, error_message, logs, debug = debug )
 
-      command = f"helm repo update"
-      error_message = f"Failed to update local repository cache"
-      execute_cli_command (command, error_message, logs, debug = debug )
+        command = f"helm repo update"
+        error_message = f"Failed to update local repository cache"
+        execute_cli_command (command, error_message, logs, debug = debug )
 
-    except Exception as e:
-      logs.append(f"[ERROR] Exception: {e} ")
-      errors += len(versions)
+      except Exception as e:
+        logs.append(f"[ERROR] Exception: {e} ")
+        errors += len(versions)
 
-    finally:
-      time.sleep(pause_between_operations)
+      finally:
+        time.sleep(pause_between_operations)
 
 
     if errors == 0:
@@ -313,7 +335,21 @@ def main (charts_file, num_parallel_tasks, pause_between_operations):
   print("[INFO] ==================================================================================")
 
 
-  # Build the abosolute path to the charts file if required
+  #
+  # Checkov environment variables
+  #
+  if os.environ.get("LOG_LEVEL") is None or debug:
+    os.environ["LOG_LEVEL"] = "DEBUG"
+
+  if os.environ.get("PYTHONUNBUFFERED") is None or python_unbuffered:
+    os.environ["PYTHONUNBUFFERED"] = "1"
+
+  os.environ["ANSI_COLORS_DISABLED"] = "true"
+
+
+  #
+  # Build the absolute path to the charts file if required
+  #
   if not charts_file.startswith("/"):
     charts_file = f"{CURRENTDIR}/{charts_file}"
 

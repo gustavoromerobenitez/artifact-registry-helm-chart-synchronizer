@@ -220,7 +220,7 @@ if ! gcloud artifacts repositories list --location="${REGION}" --project="${PROJ
       --immutable-tags \
       --project="${PROJECT_ID}"
 
-  echo "[INFO] Granting Artifact Registry writer permissions to the Google Service Account..."
+  echo "[INFO] Granting Artifact Registry Writer permissions to the Google Service Account..."
   gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
       --member "serviceAccount:${GCP_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" \
       --role "roles/artifactregistry.writer"
@@ -233,6 +233,23 @@ if ! gcloud artifacts repositories list --location="${REGION}" --project="${PROJ
 
 fi
 
+
+if ! gcloud storage buckets list --project="${PROJECT_ID}" --format="value(NAME)" 2>/dev/null | grep "gs://${APP_NAME}-compliance-reports" >/dev/null; then
+
+  echo "[INFO] Creating a bucket to store Security and Compliance reports..."
+  gcloud storage buckets create "gs://${APP_NAME}-compliance-reports" \
+      --public-access-prevention \
+      --uniform-bucket-level-access \
+      --enable-autoclass \
+      --soft-delete-duration="4w" \
+      --location="${REGION}" --project="${PROJECT_ID}"
+
+  echo "[INFO] Granting Storage Object User permissions to the Google Service Account on the bucket gs://${APP_NAME}..."
+  gcloud projects add-iam-policy-binding "gs://${APP_NAME}-compliance-reports" \
+      --member "serviceAccount:${GCP_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com" \
+      --role "roles/storage.objectUser"
+
+fi
 
 if [[ "$BUILD_AND_PUSH" == "YES" ]]; then
 

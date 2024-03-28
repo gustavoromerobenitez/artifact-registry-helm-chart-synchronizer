@@ -22,16 +22,21 @@
 #            Other charts will still be pulled
 #
 charts:
-- registry: charts.jetstack.io
+#
+# Example HTTPS registry
+#
+- registry: https://charts.jetstack.io
   repository: cert-manager
   chart: cert-manager
   destination_repository: testrepo
   versions:
   - v1.14.2
-  # Non-fatal error
+  # Non-fatal error - latest does not exist
   - latest
 #
-- registry: charts.bitnami.com/bitnami
+# Example OCI registry
+#
+- registry: oci://registry-1.docker.io/bitnamicharts
   repository: bitnami
   chart: redis
   destination_repository: testrepo
@@ -40,7 +45,7 @@ charts:
   - 18.19.1
   - 18.19.0
 #
-- registry: charts.bitnami.com/bitnami
+- registry: https://charts.bitnami.com/bitnami
   repository: bitnami
   chart: thanos
   destination_repository: testrepo
@@ -50,14 +55,14 @@ charts:
 #
 # example-non-existing destination repository
 #
-#- source: charts.jetstack.io/cert-manager/cert-manager-approver-policy
+#- source: https://charts.jetstack.io/cert-manager/cert-manager-approver-policy
 #  destination: non-existent-repository/cert-manager
 #  versions:
 #  - v0.12.1
 #
 # example of private registry
 #
-#- source: open-registry.my-org.com/some-chart
+#- source: oci://open-registry.dummyorg.fake/some-chart
 #  destination: testrepo/private-registry-charts
 #  versions:
 #  - v1.14.2
@@ -65,7 +70,7 @@ charts:
 #
 # example of private authenticated registry
 #
-#- source: authenticated-registry.my-org.com/some-repo/some-chart
+#- source: authenticated-registry.dummyorg.fake/some-repo/some-chart
 #  destination: testrepo/private-registry-charts
 #  versions:
 #  - 1.2.3
