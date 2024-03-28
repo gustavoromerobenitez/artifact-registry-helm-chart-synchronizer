@@ -26,7 +26,7 @@ REQUIRED_ENVIRONMENT_VARIABLES = {
 #
 # Checks that all environment variables passed as argument are set
 #
-def check_environment_variables ( environment_vars, debug=False ):
+def check_environment_variables ( environment_vars, debug = False ):
 
   missing = []
 
@@ -99,17 +99,17 @@ def sync_chart ( chart, authenticated_registries, pause_between_operations, dest
   #
   # If the destination regsitry requires authentication, retrieve its credentials
   #  which should be present as environment variables
-  # 
-  username, password = None
+  #
+  username = password = None
   if authenticated_registries is not None \
         and authenticated_registries != [] \
         and destination_registry in authenticated_registries:
 
-    (username, password) = get_credentials_for_registry(destination_registry)
-  
+    (username, password) = get_credentials_for_registry(destination_registry, debug)
+
 
   destination_repo = chart["destination_repository"]
-  
+
   # add the source repository to the path to keep the charts organised in tArtifact Registry
   destination_full_path = f"{destination_registry}/{destination_repo}/{source_repository}"
 
@@ -177,7 +177,7 @@ def sync_chart ( chart, authenticated_registries, pause_between_operations, dest
             #   We need to edit the chart name in the Chart.yaml included in the tgz file.
             #
             if re.search(r'^.+[A-Z]', pulled_chart_file_name) is not None:
-              
+
               new_pulled_chart_file_name = re.sub(r'([A-Z])', lambda m: f"-{m.group(0).lower()}", pulled_chart_file_name)
               new_chart_name = re.sub(r'([A-Z])', lambda m: f"-{m.group(0).lower()}", source_chart_name)
 
@@ -195,13 +195,13 @@ def sync_chart ( chart, authenticated_registries, pause_between_operations, dest
             error_message = f"Failed to push chart file {pulled_chart_file_name} to {destination_full_path}"
             execute_cli_command (command, error_message, logs, debug = debug )
 
-            logs.append(f"[INFO] SUCCESS - chart {chart_name} version {version} pushed to {destination_full_path} ")
+            logs.append(f"[INFO] SUCCESS - chart {destination_chart_name} version {version} pushed to {destination_full_path} ")
             synced_charts.append(f"{pulled_chart_file_name}")
 
           except Exception as e:
             logs.append(f"[ERROR] Exception: {e} ")
             errors +=1
-          
+
           finally:
             time.sleep(pause_between_operations)
 
@@ -217,10 +217,10 @@ def sync_chart ( chart, authenticated_registries, pause_between_operations, dest
 
 ########################################################################
 #
-# Given a Helm chart registry, it retrieves it credentials 
+# Given a Helm chart registry, it retrieves it credentials
 #   from environment variables, if they are defined
 #
-def get_credentials_for_registry(registry):
+def get_credentials_for_registry(registry, debug = False):
 
   # The username and password should be present in environment variables
   #  named like the registry they belong to,
@@ -266,7 +266,7 @@ def authenticate_against_registries (config, artifact_registry_hostname, verify_
 
     for registry in config["authenticatedRegistries"]:
 
-      (username, password) = get_credentials_for_registry(registry)
+      (username, password) = get_credentials_for_registry(registry, debug)
 
       print(f"[INFO] Authenticating against the Helm registry at {registry} ...")
 
@@ -344,7 +344,7 @@ def main (charts_file, num_parallel_tasks, pause_between_operations):
 
   parallel_function = partial ( sync_chart, authenticated_registries = authenticated_registries,
                                             pause_between_operations = pause_between_operations,
-                                            destination_registry = destination_registry, 
+                                            destination_registry = destination_registry,
                                             verify_certificates = verify_certificates, debug = debug )
 
   with Pool(num_parallel_tasks) as p:
@@ -377,6 +377,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser( description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-f','--charts-file', type = str,  required = False, default = "config/charts.yaml", metavar="< relative or absolute path to the charts YAML file >", help='The relative or absolute path to the YAML file that contains the list of Helm charts and versions to be synchronized.')
     parser.add_argument('-n','--num-parallel-tasks', type = int, required = False, default = 10, metavar="NUM_PARALLEL_TASKS", help='The max number of parallel tasks')
-    parser.add_argument('-p','--pause-between-operations', type = int, required = False, default = 10, metavar="PAUSE_BETWEEN_OPERATIONS", help='The pause in seconds between fetching and pulling each chart version')
+    parser.add_argument('-p','--pause-between-operations', type = int, required = False, default = 1, metavar="PAUSE_BETWEEN_OPERATIONS", help='The pause in seconds between fetching and pulling each chart version')
     args = parser.parse_args()
     main(args.charts_file, args.num_parallel_tasks, args.pause_between_operations)

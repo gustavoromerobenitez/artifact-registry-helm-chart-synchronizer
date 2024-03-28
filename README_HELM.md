@@ -1,6 +1,6 @@
 # Helm Chart
 
-The Helm Chart contained in this repository creates a Kubernetes CronJob that runs the `helm-chart-synchronizer` Python App on a schedule.
+The Helm Chart contained in this repository creates a Kubernetes CronJob that runs the [helm-chart-synchronizer](./app/README.md) Python App on a schedule.
 
 ## Source Registry Certificate Verification
 
@@ -32,7 +32,7 @@ Those secrets should be declared in JSON format and you should also indicate the
 
 ```
 authenticatedRegistries:
-  authenticated-registry-1.org.com:
+  authenticated-registry-1.dummyorg.fake:
     usernameSecret: authenticated-registry-1-secret
     usernameSecretKey: username
     passwordSecret: authenticated-registry-1-secret

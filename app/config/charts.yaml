@@ -8,9 +8,9 @@
 # authenticatedRegistries:
 #   List of hostnames for the registries that will require authentication
 #
-authenticatedRegistries:
-  - authenticated-registry-1.org.com
-#  - authenticated-registry-2.org.com
+#authenticatedRegistries:
+#  - authenticated-registry-1.dummyorg.fake
+#  - authenticated-registry-2.dummyorg.fake
 
 
 #
@@ -55,16 +55,19 @@ charts:
 #  versions:
 #  - v0.12.1
 #
-# example of private registries
+# example of private registry
 #
 #- source: open-registry.my-org.com/some-chart
 #  destination: testrepo/private-registry-charts
 #  versions:
 #  - v1.14.2
 #  - latest
-- source: authenticated-registry.my-org.com/some-repo/some-chart
-  destination: testrepo/private-registry-charts
-  versions:
-  - 1.2.3
+#
+# example of private authenticated registry
+#
+#- source: authenticated-registry.my-org.com/some-repo/some-chart
+#  destination: testrepo/private-registry-charts
+#  versions:
+#  - 1.2.3
 #  - 4.5.6
 #  - latest
