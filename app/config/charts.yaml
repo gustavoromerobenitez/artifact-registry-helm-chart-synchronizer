@@ -1,0 +1,83 @@
+#############################################################
+#
+# Helm Charts Sync
+#
+#############################################################
+
+#
+# authenticatedRegistries:
+#   List of hostnames for the registries that will require authentication
+#
+#authenticatedRegistries:
+#  - authenticated-registry-1.dummyorg.fake
+#  - authenticated-registry-2.dummyorg.fake
+
+
+#
+# charts:
+#   List of Helm Charts to be pulled from their sources
+#   and then pushed to their destination in Artifact Registry
+#
+# IMPORTANT: Non-existing destination repositories will throw a non-fatal error
+#            Other charts will still be pulled
+#
+charts:
+#
+# Example HTTPS registry
+#
+- registry: https://oauth2-proxy.github.io/manifests
+  repository: oauth2-proxy
+  chart: oauth2-proxy
+  destination_repository: testrepo
+  versions:
+  - 7.1.0
+  # Non-fatal error - latest does not exist
+  #- latest
+#
+# 
+#
+- registry: https://prometheus-community.github.io/helm-charts
+  repository: prometheus-community
+  chart: prometheus
+  destination_repository: testrepo
+  versions:
+  - 25.19.0
+#
+# Example OCI registries
+#
+- registry: oci://registry-1.docker.io
+  repository: bitnamicharts
+  chart: redis
+  destination_repository: testrepo
+  versions:
+  - 18.19.2
+  - 18.19.1
+  - 18.19.0
+#
+- registry: oci://registry-1.docker.io
+  repository: bitnamicharts
+  chart: thanos
+  destination_repository: testrepo
+  versions:
+  - 14.0.1
+  - 14.0.0
+#
+# example of private registry
+#
+#- registry: oci://open-registry.dummyorg.fake
+#  repository: some-repository
+#  chart: some-chart 
+#  destination_repository: testrepo/private-registry-charts
+#  versions:
+#  - v1.14.2
+#  - latest
+#
+# example of private authenticated registry
+#
+#- registry: oci://authenticated-registry.dummyorg.fake
+#  repository: some-repository
+#  chart: some-chart 
+#  destination_repository: testrepo/private-registry-charts
+#  versions:
+#  - v1.14.2
+#  - latest

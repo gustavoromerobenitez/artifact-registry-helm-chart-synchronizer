@@ -1,0 +1,124 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  labels:
+    app: {{ .Values.commonName }}
+  name: {{ .Values.commonName | lower | replace "_" "-" }}-cj
+  namespace: {{ .Values.namespace }}
+spec:
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 2
+  successfulJobsHistoryLimit: 2
+  schedule: "{{ .Values.schedule }}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            workloadType: "user"
+            cloud.google.com/gke-spot: "true" # SpotVMs
+            iam.gke.io/gke-metadata-server-enabled: "true" # Workload Identity
+          tolerations:
+          - key: cloud.google.com/gke-spot
+            operator: Equal
+            value: "true"
+            effect: NoSchedule
+          - key: workloadType
+            operator: Equal
+            value: "user"
+            effect: NoSchedule
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: cloud.google.com/gke-spot
+                    operator: In
+                    values:
+                    - "true"
+          serviceAccountName: {{ .Values.kubernetesServiceAccount }}
+          securityContext:
+            runAsNonRoot: true
+          restartPolicy: Never
+          containers:
+            - name: {{ .Values.commonName }}
+              args:
+                - "-n"
+                - "{{ .Values.numParallelTasks }}"
+                - "-p"
+                - "{{ .Values.pauseBetweenOperations }}"
+              image: "{{ printf "%s/%s/%s/%s:%s@%s" .Values.registry.host .Values.registry.projectId .Values.image.repository .Values.image.path .Values.image.tag .Values.image.digest | lower }}"
+              imagePullPolicy: IfNotPresent
+              securityContext:
+                runAsUser: 1000
+              resources: {{ toYaml .Values.resources | nindent 16 }}
+              env:
+                - name: DEBUG
+                  value: "{{ .Values.debug }}"
+                - name: ARTIFACT_REGISTRY_HOSTNAME
+                  value: "{{ .Values.registry.host }}"
+                - name: ARTIFACT_REGISTRY_PROJECT_ID
+                  value: "{{ .Values.registry.projectId }}"
+                - name: VERIFY_CERTIFICATES
+                  value: {{ if .Values.verifyRegistryCertificates }}"true"{{ else -}}"false"{{- end -}}
+                {{- if .Values.sast }}
+                - name: BUCKET_URL
+                  value: "gs://{{ .Values.sast.bucketName }}"
+                - name: RUN_TRIVY
+                  value: "{{ .Values.sast.runTrivy }}"
+                - name: RUN_CHECKOV
+                  value: "{{ .Values.sast.runCheckov }}"
+                {{- end -}}
+                {{- if .Values.useProxy }}
+                - name: HTTP_PROXY
+                  value: "{{ .Values.useProxy.proxyUrl }}"
+                - name: HTTPS_PROXY
+                  value: "{{ .Values.useProxy.proxyUrl }}"
+                - name: NO_PROXY
+                  value: "{{ .Values.useProxy.noProxy }}"
+                - name: http_proxy
+                  value: "{{ .Values.useProxy.proxyUrl }}"
+                - name: https_proxy
+                  value: "{{ .Values.useProxy.proxyUrl }}"
+                - name: no_proxy
+                  value: "{{ .Values.useProxy.noProxy }}"
+                {{ end -}}
+                {{- if .Values.authenticatedRegistries -}}
+                {{- range $registry , $value := .Values.authenticatedRegistries -}}
+                {{- $prefix := $registry | upper | replace "-" "_" | replace "." "_" }}
+                - name: {{ $prefix }}_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $value.usernameSecret }}
+                      key: {{ $value.usernameSecretKey }}
+                - name: {{ $prefix }}_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $value.passwordSecret }}
+                      key: {{ $value.passwordSecretKey }}
+                {{- end -}}
+                {{ end }}
+              #
+              volumeMounts:
+                - name: charts-file-cm-volume
+                  mountPath: /app/config/charts.yaml
+                  subPath: charts.yaml
+                  readOnly: true
+                #
+                {{ if .Values.verifyRegistryCertificates -}}
+                - name: trusted-certs-volume
+                  mountPath: /app/trusted-certs/ca-bundle.pem
+                  subPath: ca-bundle.pem
+                  readOnly: true
+                {{ end -}}
+          #
+          volumes:
+            - name: charts-file-cm-volume
+              configMap:
+                name: charts-file-cm
+            #
+            {{ if .Values.verifyRegistryCertificates -}}
+            - name: trusted-certs-volume
+              secret:
+                secretName: {{ if .Values.verifyRegistryCertificates.createSecret -}}{{ .Values.verifyRegistryCertificates.createSecret.name }}{{ else -}}{{ .Values.verifyRegistryCertificates.existingSecret }}{{ end -}}
+            {{ end -}}

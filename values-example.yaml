@@ -1,0 +1,86 @@
+# By default, all resources will be located in the same project
+projectId: &projectId test-project
+
+commonName: &commonName helm-chart-synchronizer
+
+# The project where the Cronjobs are deployed
+cronjobsProjectId: *projectId
+
+namespace: *commonName
+
+# The location of the Artifact Registry
+registry:
+  host: us-east1-docker.pkg.dev
+  projectId: *projectId
+
+image:
+  repository: testrepo
+  path: *commonName
+  tag: stable
+  digest: sha256:r3qu1r3d
+
+
+# The IAM Service Account
+# Must be created before deploying this application
+# Must have permissions:
+# - to read and write in Artifact Registry
+iamServiceAccount:
+  name: *commonName
+  projectId: *projectId
+
+# The Kubernetes SA
+# Will be linked via Workload Identity to the IAM Service Account above
+kubernetesServiceAccount: *commonName
+
+debug: false
+
+schedule: "*/15 * * * *"
+
+resources:
+  limits: # Must be proportionate to the resources of the VM Type
+    cpu: 500m
+    memory: 800Mi
+  requests: # Must be proportionate to the resources of the VM Type
+    cpu: 500m
+    memory: 500Mi
+
+# Control the script execution
+numParallelTasks: 4
+pauseBetweenOperations: 1
+
+sast:
+  bucketName: my-compliance-reporting-bucket
+  runTrivy: true
+  runCheckov: true
+
+#useProxy:
+#  proxyUrl:
+#  noProxy:
+
+# If the OPTIONAL verifyRegistryCertificates key is present in the chart configuration,
+#  the certificates presented by all source repositories will be verified.
+#  An existing secret can be used or a new secret can be created
+#  The new secret would collect all the signer certificates
+#  provided in a configuration directory relative to the root of this chart
+verifyRegistryCertificates:
+  #existingSecret: trusted-signers
+  createSecret:
+    name: trusted-signers
+    relativePathToCertificatesBundle: app/trusted-signer-certs/ca-bundle.pem
+
+#
+# List of registries that will require authentication
+#
+authenticatedRegistries:
+  #
+  authenticated-registry-1.dummyorg.fake:
+    usernameSecret: authenticated-registry-1-secret
+    usernameSecretKey: username
+    passwordSecret: authenticated-registry-1-secret
+    passwordSecretKey: password
+  #
+  authenticated-registry-2.dummyorg.fake:
+    usernameSecret: authenticated-registry-2-secret
+    usernameSecretKey: username
+    passwordSecret: authenticated-registry-2-secret
+    passwordSecretKey: password

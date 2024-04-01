@@ -1,0 +1,15 @@
+{{- if .Values.verifyRegistryCertificates -}}
+{{-   if .Values.verifyRegistryCertificates.createSecret -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.verifyRegistryCertificates.createSecret.name }}
+  labels:
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    release: "{{ .Release.Name }}"
+type: Opaque
+data:
+  ca-bundle.pem: |
+{{ .Files.Get .Values.verifyRegistryCertificates.createSecret.relativePathToCertificatesBundle | b64enc | indent 4 }}
+{{- end }}
+{{- end }}
