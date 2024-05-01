@@ -55,6 +55,8 @@ spec:
               env:
                 - name: DEBUG
                   value: "{{ .Values.debug }}"
+                - name: PYTHONUNBUFFERED
+                  value: "1"
                 - name: ARTIFACT_REGISTRY_HOSTNAME
                   value: "{{ .Values.registry.host }}"
                 - name: ARTIFACT_REGISTRY_PROJECT_ID
