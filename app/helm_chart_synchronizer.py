@@ -80,7 +80,7 @@ def execute_cli_command (command, error_message, logs, debug=False, capture_outp
     logs.append(f"[ERROR] {exc}")
     raise Exception("Command execution failed")
 
-  return True
+  return command_result.stdout
 
 
 ############################################################################################
@@ -299,15 +299,30 @@ def sync_chart ( chart, authenticated_registries, pause_between_operations, dest
               pulled_chart_file_name = new_pulled_chart_file_name
               destination_chart_name = new_chart_name
 
+            #
+            # It seems that Artifact Registry allows duplicates for Helm Charts
+            # To avoid `helm push` from creating new copies of already existing artifact tags or versions
+            # we check if the tag is already present in A.R., and skip the push if it is.
+            #
+            command = f"gcloud artifacts docker images list {destination_full_path.replace("oci://","")}/{destination_chart_name} --include-tags --filter=tags='{version}' 2>/dev/null"
+            error_message = f"Failed to list current tags of {destination_full_path}"
+            tag_check = execute_cli_command (command, error_message, logs, debug = debug )
 
-            logs.append(f"[INFO] Pushing Helm chart file {pulled_chart_file_name} to {destination_full_path}")
+            # if the tag is not found in Artifact Registry, the chart file is pushed
+            if tag_check is None or tag_check == "":
 
-            command = f"helm push {pulled_chart_file_name} {destination_full_path}"
-            error_message = f"Failed to push chart file {pulled_chart_file_name} to {destination_full_path}"
-            execute_cli_command (command, error_message, logs, debug = debug )
+              logs.append(f"[INFO] Pushing Helm chart file {pulled_chart_file_name} to {destination_full_path}")
 
-            logs.append(f"[INFO] SUCCESS - chart {destination_chart_name} version {version} pushed to {destination_full_path} ")
-            synced_charts.append(f"{pulled_chart_file_name}")
+              command = f"helm push {pulled_chart_file_name} {destination_full_path}"
+              error_message = f"Failed to push chart file {pulled_chart_file_name} to {destination_full_path}"
+              execute_cli_command (command, error_message, logs, debug = debug )
+  
+              logs.append(f"[INFO] SUCCESS - chart {destination_chart_name} version {version} pushed to {destination_full_path} ")
+              synced_charts.append(f"{pulled_chart_file_name}")
+
+            else:
+
+               logs.append(f"[WARN] Version {version} of chart {destination_chart_name} already exists at {destination_full_path}. Skipping push...")            
 
           except Exception as e:
             logs.append(f"[ERROR] Exception: {e} ")
